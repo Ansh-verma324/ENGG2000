@@ -73,6 +73,7 @@ void loop() {
   // 1. MOVE FORWARD
   // ============================================
   Serial.println("▶ FORWARD");
+  digitalWrite(laserPin, LOW); // Off
   digitalWrite(phPin, HIGH);   // Forward direction
   analogWrite(enPin, motorSpeed);
   encoderCount = 0;             // Reset encoder count
@@ -88,6 +89,7 @@ void loop() {
   // ============================================
   Serial.println("■ STOP");
   analogWrite(enPin, 0);        // Brake
+  digitalWrite(laserPin, HIGH); // On
   delay(2000);                  // Stop for 2 seconds
   Serial.println();
   
@@ -95,6 +97,7 @@ void loop() {
   // 3. MOVE REVERSE
   // ============================================
   Serial.println("◀ REVERSE");
+  digitalWrite(laserPin, LOW);  // Off
   digitalWrite(phPin, LOW);     // Reverse direction
   analogWrite(enPin, motorSpeed);
   encoderCount = 0;             // Reset encoder count
@@ -110,6 +113,7 @@ void loop() {
   // ============================================
   Serial.println("■ STOP");
   analogWrite(enPin, 0);        // Brake
+  digitalWrite(laserPin, HIGH); // On
   delay(2000);                  // Stop for 2 seconds
   Serial.println();
   Serial.println("========== Loop Repeating ==========");
