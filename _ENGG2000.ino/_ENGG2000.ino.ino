@@ -15,6 +15,8 @@ const int sleepPin = 9; // Wake up driver
 const int encA = 2;     // Encoder Channel A (Interrupt pin)
 const int encB = 4;     // Encoder Channel B
 
+const int recieverPin = -1; // IR data pin (not used yet)
+
 const int laserPin = 5; //Pin for the laser 
 
 // ============================================
@@ -56,6 +58,9 @@ void setup() {
   //Laser pin
   pinMode(laserPin, OUTPUT);
   
+  //IR pin
+  pinMode(recieverPin,INPUT);
+
   // Attach interrupt - encoderISR is now declared
   attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
   
@@ -72,50 +77,66 @@ void loop() {
   // ============================================
   // 1. MOVE FORWARD
   // ============================================
+
+
   Serial.println("▶ FORWARD");
   digitalWrite(laserPin, LOW); // Off
   digitalWrite(phPin, HIGH);   // Forward direction
   analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
-  delay(5000);                  // Run for 5 seconds
+  // encoderCount = 0;             // Reset encoder count
+  // delay(5000);                  // Run for 5 seconds
   
-  // Show encoder counts
-  Serial.print("  Encoder Pulses: ");
-  Serial.println(encoderCount);
-  Serial.println();
+  int state = digitalRead(receiverPin);
+  if (state == LOW) {
+    Serial.println("■ STOP");
+    analogWrite(enPin, 0);        // Brake
+    digitalWrite(laserPin, HIGH); // On
+    delay(5000);                  // Stop for 5 seconds
+    Serial.println("IR DETECTED");
+    digitalWrite(laserPin, LOW);  // laser off
+    analogWrite(enPin, 255);      // ctnu
+  } else {
+    Serial.println("NO IR");
+  }
   
-  // ============================================
-  // 2. STOP
-  // ============================================
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
+  // // Show encoder counts
+  // Serial.print("  Encoder Pulses: ");
+  // Serial.println(encoderCount);
+  // Serial.println();
   
-  // ============================================
-  // 3. MOVE REVERSE
-  // ============================================
-  Serial.println("◀ REVERSE");
-  digitalWrite(laserPin, LOW);  // Off
-  digitalWrite(phPin, LOW);     // Reverse direction
-  analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
-  delay(5000);                  // Run for 5 seconds
+  // // ============================================
+  // // 2. STOP
+  // // ============================================
+  // Serial.println("■ STOP");
+  // analogWrite(enPin, 0);        // Brake
+  // digitalWrite(laserPin, HIGH); // On
+  // delay(2000);                  // Stop for 2 seconds
+  // Serial.println();
   
-  // Show encoder counts
-  Serial.print("  Encoder Pulses: ");
-  Serial.println(encoderCount);
-  Serial.println();
+  // // ============================================
+  // // 3. MOVE REVERSE
+  // // ============================================
+  // Serial.println("◀ REVERSE");
+  // digitalWrite(laserPin, LOW);  // Off
+  // digitalWrite(phPin, LOW);     // Reverse direction
+  // analogWrite(enPin, motorSpeed);
+  // encoderCount = 0;             // Reset encoder count
+  // delay(5000);                  // Run for 5 seconds
   
-  // ============================================
-  // 4. STOP
-  // ============================================
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
-  Serial.println("========== Loop Repeating ==========");
-  Serial.println();
+  // // Show encoder counts
+  // Serial.print("  Encoder Pulses: ");
+  // Serial.println(encoderCount);
+  // Serial.println();
+  
+  // // ============================================
+  // // 4. STOP
+  // // ============================================
+  // Serial.println("■ STOP");
+  // analogWrite(enPin, 0);        // Brake
+  // digitalWrite(laserPin, HIGH); // On
+  // delay(2000);                  // Stop for 2 seconds
+  // Serial.println();
+  // Serial.println("========== Loop Repeating ==========");
+  // Serial.println();
+  delay(100);
 }
