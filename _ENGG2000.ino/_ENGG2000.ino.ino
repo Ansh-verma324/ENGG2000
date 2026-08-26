@@ -17,6 +17,9 @@ const int encB = 4;     // Encoder Channel B
 
 const int laserPin = 5; //Pin for the laser 
 
+const int irLEDPin = 6; //IR emitter led pin 
+const int irRecieverPin = 7; //IR reciever output pin
+
 // ============================================
 // VARIABLES
 // ============================================
@@ -32,6 +35,27 @@ void encoderISR() {
   } else {
     encoderCount--;
   }
+}
+
+// ============================================
+// IR FUNCTIONS
+// ============================================
+
+// Sends a short burst of ~38kHz IR by toggling the LED manually
+void sendIRBurst() {
+  for (int i = 0; i < 200; i++) {
+    digitalWrite(irLedPin, HIGH); // LED on
+    delayMicroseconds(13);        // ~38kHz half-period (1/38000/2 ≈ 13.16us)
+    digitalWrite(irLedPin, LOW);  // LED off
+    delayMicroseconds(13);
+  }
+}
+
+// Sends the burst, then checks if the receiver picked it up
+bool checkIRDetected() {
+  sendIRBurst();
+  int state = digitalRead(irReceiverPin);
+  return (state == LOW);                  // when signal is detected
 }
 
 // ============================================
