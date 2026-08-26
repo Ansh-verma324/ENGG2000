@@ -1,7 +1,7 @@
 //Template 1: 
 
 /*
- * Motor Control: Forward → Stop → Reverse → Stop
+ * Motor Control with IR Obstacle Detection
  * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
  */
 
@@ -15,9 +15,10 @@ const int sleepPin = 9; // Wake up driver
 const int encA = 2;     // Encoder Channel A (Interrupt pin)
 const int encB = 4;     // Encoder Channel B
 
-const int recieverPin = -1; // IR data pin (not used yet)
+const int laserPin = 5; // Pin for the laser 
 
-const int laserPin = 5; //Pin for the laser 
+const int irLedPin = 6;      // IR emitter LED
+const int receiverPin = 7;   // IR receiver output pin
 
 // ============================================
 // VARIABLES
@@ -37,36 +38,47 @@ void encoderISR() {
 }
 
 // ============================================
+// IR FUNCTIONS
+// ============================================
+void sendIRBurst() {
+  for (int i = 0; i < 200; i++) {
+    digitalWrite(irLedPin, HIGH);
+    delayMicroseconds(13);
+    digitalWrite(irLedPin, LOW);
+    delayMicroseconds(13);
+  }
+}
+
+bool checkIRDetected() {
+  sendIRBurst();
+  int state = digitalRead(receiverPin);
+  return (state == LOW); // obstacle detected
+}
+
+// ============================================
 // SETUP
 // ============================================
 void setup() {
   Serial.begin(9600);
   
-  // Motor control pins
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
   pinMode(sleepPin, OUTPUT);
   
-  // Wake up the driver
   digitalWrite(sleepPin, HIGH);
   delay(10);
   
-  // Encoder pins
   pinMode(encA, INPUT_PULLUP);
   pinMode(encB, INPUT_PULLUP);
 
-  //Laser pin
   pinMode(laserPin, OUTPUT);
-  
-  //IR pin
-  pinMode(recieverPin,INPUT);
 
-  // Attach interrupt - encoderISR is now declared
+  pinMode(irLedPin, OUTPUT);
+  pinMode(receiverPin, INPUT);
+  
   attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
   
   Serial.println("Motor Control Ready!");
-  Serial.println("Sequence: Forward → Stop → Reverse → Stop");
-  Serial.println("------------------------------------------");
   delay(1000);
 }
 
@@ -74,69 +86,17 @@ void setup() {
 // MAIN LOOP
 // ============================================
 void loop() {
-  // ============================================
-  // 1. MOVE FORWARD
-  // ============================================
-
-
-  Serial.println("▶ FORWARD");
-  digitalWrite(laserPin, LOW); // Off
-  digitalWrite(phPin, HIGH);   // Forward direction
-  analogWrite(enPin, motorSpeed);
-  // encoderCount = 0;             // Reset encoder count
-  // delay(5000);                  // Run for 5 seconds
-  
-  int state = digitalRead(receiverPin);
-  if (state == LOW) {
-    Serial.println("■ STOP");
-    analogWrite(enPin, 0);        // Brake
-    digitalWrite(laserPin, HIGH); // On
-    delay(5000);                  // Stop for 5 seconds
-    Serial.println("IR DETECTED");
-    digitalWrite(laserPin, LOW);  // laser off
-    analogWrite(enPin, 255);      // ctnu
+  if (checkIRDetected()) {
+    // Obstacle found - stop motor, laser on
+    Serial.println("IR DETECTED - STOPPING");
+    analogWrite(enPin, 0);        // Stop motor
+    digitalWrite(laserPin, HIGH); // Laser on
   } else {
-    Serial.println("NO IR");
+    // Clear - keep moving, laser off
+    digitalWrite(laserPin, LOW);
+    digitalWrite(phPin, HIGH);    // Forward direction
+    analogWrite(enPin, motorSpeed);
   }
-  
-  // // Show encoder counts
-  // Serial.print("  Encoder Pulses: ");
-  // Serial.println(encoderCount);
-  // Serial.println();
-  
-  // // ============================================
-  // // 2. STOP
-  // // ============================================
-  // Serial.println("■ STOP");
-  // analogWrite(enPin, 0);        // Brake
-  // digitalWrite(laserPin, HIGH); // On
-  // delay(2000);                  // Stop for 2 seconds
-  // Serial.println();
-  
-  // // ============================================
-  // // 3. MOVE REVERSE
-  // // ============================================
-  // Serial.println("◀ REVERSE");
-  // digitalWrite(laserPin, LOW);  // Off
-  // digitalWrite(phPin, LOW);     // Reverse direction
-  // analogWrite(enPin, motorSpeed);
-  // encoderCount = 0;             // Reset encoder count
-  // delay(5000);                  // Run for 5 seconds
-  
-  // // Show encoder counts
-  // Serial.print("  Encoder Pulses: ");
-  // Serial.println(encoderCount);
-  // Serial.println();
-  
-  // // ============================================
-  // // 4. STOP
-  // // ============================================
-  // Serial.println("■ STOP");
-  // analogWrite(enPin, 0);        // Brake
-  // digitalWrite(laserPin, HIGH); // On
-  // delay(2000);                  // Stop for 2 seconds
-  // Serial.println();
-  // Serial.println("========== Loop Repeating ==========");
-  // Serial.println();
+
   delay(100);
 }
