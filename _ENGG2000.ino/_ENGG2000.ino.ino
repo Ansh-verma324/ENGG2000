@@ -5,7 +5,6 @@
  * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
  */
 
-
 // ============================================
 // PIN DEFINITIONS
 // ============================================
@@ -37,23 +36,6 @@ void encoderISR() {
   } else {
     encoderCount--;
   }
-}
-// ============================================
-// SENSOR DETECTOR CODE
-// ============================================
-
-bool irDetected() {
-  int detectedCount = 0;
-
-  for (int i = 0; i < 10; i++) {
-    if (digitalRead(receiverPin) == LOW) {
-      detectedCount++;
-    }
-
-    delay(2);
-  }
-
-  return detectedCount >= 8;
 }
 
 // ============================================
@@ -97,26 +79,26 @@ void setup() {
 
 void loop() {
 
-  Serial.println("▶ FORWARD");
+  Serial.println("FORWARD");
   digitalWrite(laserPin, LOW); // Off
   digitalWrite(phPin, HIGH);   // Forward direction
   analogWrite(enPin, motorSpeed);
-  // encoderCount = 0;             // Reset encoder count
-  // delay(5000);                  // Run for 5 seconds
- 
-  if (irDetected()) {
-
-    Serial.println("■ STOP");
+  encoderCount = 0;             // Reset encoder count
+  
+  int state = digitalRead(receiverPin); 
+  if (state == LOW) {
+    Serial.println("STOP");
     analogWrite(enPin, 0);        // Brake
     digitalWrite(laserPin, HIGH); // On
-    // delay(5000);                  // Stop for 5 seconds
     Serial.println("IR DETECTED");
-    // digitalWrite(laserPin, LOW);  // laser off
-    // analogWrite(enPin, 255);      // continue
-
+    delay(5000);                  // Stop for 5 seconds on target
+    
+    digitalWrite(laserPin, LOW);  // laser off
+    analogWrite(enPin, 255);      // continue
+    delay(1000);
   } else {
 
-    Serial.println("NO IR");
+    Serial.println(state);
   }
   delay(100);
 }
