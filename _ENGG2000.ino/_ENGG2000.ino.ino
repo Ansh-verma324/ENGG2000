@@ -15,10 +15,11 @@ const int sleepPin = 9; // Wake up driver
 const int encA = 2;     // Encoder Channel A (Interrupt pin)
 const int encB = 4;     // Encoder Channel B
 
-const int laserPin = 5; //Pin for the laser 
+const int laserPin = 7; //Pin for the laser 
 
-const int irLEDPin = 6; //IR emitter led pin 
+/*const int irLedPin = 6; //IR emitter led pin 
 const int irRecieverPin = 7; //IR reciever output pin
+*/
 
 // ============================================
 // VARIABLES
@@ -42,7 +43,7 @@ void encoderISR() {
 // ============================================
 
 // Sends a short burst of ~38kHz IR by toggling the LED manually
-void sendIRBurst() {
+/*void sendIRBurst() {
   for (int i = 0; i < 200; i++) {
     digitalWrite(irLedPin, HIGH); // LED on
     delayMicroseconds(13);        // ~38kHz half-period (1/38000/2 ≈ 13.16us)
@@ -56,7 +57,7 @@ bool checkIRDetected() {
   sendIRBurst();
   int state = digitalRead(irReceiverPin);
   return (state == LOW);                  // when signal is detected
-}
+}*/
 
 // ============================================
 // SETUP
