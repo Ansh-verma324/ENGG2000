@@ -25,8 +25,8 @@ int motorSpeed = 0;
  - Connect the PMODE pin on the board to GND
  - Connect the EN pin on the board to a PWM capable output
 */
-#define enablePin 0
-#define phasePin 0
+#define enablePin 0 // Speed of Motor
+#define phasePin 0 // Direction of Motor
 
 // IR Sensor
 #define sensorPin 5
@@ -72,7 +72,7 @@ void loop() {
  
   switch (state) {
     case 1: // Speed up motor
-    for(;;) {
+    for(;;) { // "for(;;)" runs loop forever without init/condition/increment
       Serial.print("Motor Speed = ");
       Serial.println(motorSpeed);
 
@@ -82,10 +82,12 @@ void loop() {
 
       digitalWrite(phasePin, HIGH);
       analogWrite(enablePin, motorSpeed);
+
       if(currentMillis - previousMillis >= speedInterval) {
         previousMillis = currentMillis;
         motorSpeed+=1;
       }
+
       if(motorSpeed>=65) {
         state = 2;
         break;
@@ -97,10 +99,6 @@ void loop() {
       for(;;) {
         digitalWrite(phasePin, HIGH);
         analogWrite(enablePin, motorSpeed);
-
-
-       
-
 
         if (IrReceiver.decode()) {
           state = 3;
