@@ -1,104 +1,153 @@
-//Trial 2 
+// ENTIRELY NEW SAMPLE
+
+#include <IRremote.h>
 
 
+// General
+int state = 0;
+unsigned long previousMillis = 0;
+const long speedInterval = 50;
+unsigned long currentMillis = 0;
+
+
+// Motor
+int motorSpeed = 0;
+
+
+// // Encoder
+// #define encA 0
+// #define encB 0
+
+
+// Motor Driver Board
 /*
- * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
- */
+ - Connect the SLEEP pin on the board to 5V
+ - Connect the PMODE pin on the board to GND
+ - Connect the EN pin on the board to a PWM capable output
+*/
+#define enablePin 0
+#define phasePin 0
 
-// ============================================
-// PIN DEFINITIONS
-// ============================================
+// IR Sensor
+#define sensorPin 5
 
-const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
-const int phPin = 8;    // Direction control → DRV8874 PH/IN2
-const int sleepPin = 9; // Wake up driver
+// Laser
+#define laserPin 0
 
-const int encA = 2;     // Encoder Channel A (Interrupt pin)
-const int encB = 4;     // Encoder Channel B
-
-const int receiverPin = 10; // IR data pin (not used yet)
-
-const int laserPin = 7; //Pin for the laser
-
-// ============================================
-// VARIABLES
-// ============================================
-
-volatile long encoderCount = 0; 
-int motorSpeed = 255;   // Full speed
-
-// ============================================
-// ENCODER INTERRUPT SERVICE ROUTINE
-// ============================================
-void encoderISR() {
-  if (digitalRead(encB) == HIGH) {
-    encoderCount++;
-  } else {
-    encoderCount--;
-  }
-}
-
-// ============================================
-// SETUP
-// ============================================
 void setup() {
-
+  // General Setup
+  state = 1;
   Serial.begin(9600);
- 
-  // Motor control pins
-  pinMode(enPin, OUTPUT);
-  pinMode(phPin, OUTPUT);
-  pinMode(sleepPin, OUTPUT);
- 
-  // Wake up the driver
-  digitalWrite(sleepPin, HIGH);
-  delay(10);
- 
-  // Encoder pins
-  pinMode(encA, INPUT_PULLUP);
-  pinMode(encB, INPUT_PULLUP);
+  IrReceiver.begin(sensorPin, ENABLE_LED_FEEDBACK);
 
-  //Laser pin
+
+  // // Encoder Setup
+  // pinMode(encA, INPUT);
+  // pinMode(encB, INPUT);
+
+
+  // Motor Driver Board Setup
+  pinMode(enablePin, OUTPUT);
+  analogWrite(enablePin, 0);
+  pinMode(phasePin, OUTPUT);
+  digitalWrite(phasePin, LOW);
+
+
+  // IR Sensor Setup
+  pinMode(sensorPin, INPUT_PULLUP);
+
+
+  // Laser Setup
   pinMode(laserPin, OUTPUT);
- 
-  //IR pin
-  pinMode(receiverPin, INPUT);
-
-  // Attach interrupt - encoderISR is now declared
-  attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
- 
-  Serial.println("Motor Control Ready!");
-  Serial.println("------------------------------------------");
-  delay(1000);
-
+  digitalWrite(laserPin, LOW);
 }
 
-// ============================================
-// MAIN LOOP
-// ============================================
+
+void runTimer() {
+  currentMillis = millis();
+}
+
 
 void loop() {
+ 
+  switch (state) {
+    case 1: // Speed up motor
+    for(;;) {
+      Serial.print("Motor Speed = ");
+      Serial.println(motorSpeed);
 
-  Serial.println("FORWARD");
-  digitalWrite(laserPin, LOW); // Off
-  digitalWrite(phPin, HIGH);   // Forward direction
-  analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
-  
-  int state = digitalRead(receiverPin); 
-  if (state == LOW) {
-    Serial.println("STOP");
-    analogWrite(enPin, 0);        // Brake
-    digitalWrite(laserPin, HIGH); // On
-    Serial.println("IR DETECTED");
-    delay(5000);                  // Stop for 5 seconds on target
-    
-    digitalWrite(laserPin, LOW);  // Laser off
-    analogWrite(enPin, 255);      // continue
-    delay(1000);
-  } else {
 
-    Serial.println(state);
+      runTimer();
+
+
+      digitalWrite(phasePin, HIGH);
+      analogWrite(enablePin, motorSpeed);
+      if(currentMillis - previousMillis >= speedInterval) {
+        previousMillis = currentMillis;
+        motorSpeed+=1;
+      }
+      if(motorSpeed>=65) {
+        state = 2;
+        break;
+      }
+    }
+      break;
+    case 2: // Searching for IR signal
+     
+      for(;;) {
+        digitalWrite(phasePin, HIGH);
+        analogWrite(enablePin, motorSpeed);
+
+
+       
+
+
+        if (IrReceiver.decode()) {
+          state = 3;
+          previousMillis = currentMillis;
+          IrReceiver.resume();
+          break;
+        }
+      }
+
+
+      break;
+    case 3: // Slow down motor
+      for(;;) {
+        Serial.print("Motor Speed = ");
+        Serial.println(motorSpeed);
+
+
+        runTimer();
+
+
+        digitalWrite(phasePin, HIGH);
+        analogWrite(enablePin, motorSpeed);
+        if(currentMillis - previousMillis >= speedInterval) {
+          previousMillis = currentMillis;
+          motorSpeed-=3;
+        }
+        if(motorSpeed<=0) {
+          motorSpeed=0;
+          state = 4;
+          previousMillis = currentMillis;
+          break;
+        }
+      }
+      break;
+
+
+    case 4: // Shoot laser
+      for(;;) {
+        runTimer();
+       
+        digitalWrite(laserPin, HIGH);
+        if(currentMillis - previousMillis >= 2000) {
+          state = 1;
+          break;
+        }
+      }
+      break;
+      state = 1;
   }
-  delay(100);
 }
