@@ -93,7 +93,7 @@ void loop() {
     Serial.println("IR DETECTED");
     delay(5000);                  // Stop for 5 seconds on target
     
-    digitalWrite(laserPin, LOW);  // laser off
+    digitalWrite(laserPin, LOW);  // Laser off
     analogWrite(enPin, 255);      // continue
     delay(1000);
   } else {
