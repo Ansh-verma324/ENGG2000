@@ -1,9 +1,9 @@
-//Template 1: 
+//Trial 4: 
 
 /*
  * Motor Control: Forward → Stop → Reverse → Stop
  * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
- */
+ */       
 
 // ============================================
 // PIN DEFINITIONS
@@ -25,7 +25,7 @@ const int irRecieverPin = 7; //IR reciever output pin
 // VARIABLES
 // ============================================
 volatile long encoderCount = 0;
-int motorSpeed = 255;   // Full speed
+int motorSpeed = 65;   // 25% of max speed
 
 // ============================================
 // ENCODER INTERRUPT SERVICE ROUTINE
@@ -112,6 +112,7 @@ void loop() {
   // ============================================
   // 2. STOP
   // ============================================
+  
   Serial.println("■ STOP");
   analogWrite(enPin, 0);        // Brake
   digitalWrite(laserPin, HIGH); // On
