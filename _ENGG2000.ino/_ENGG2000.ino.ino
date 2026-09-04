@@ -23,14 +23,12 @@ const int laserPin = 7; //Pin for the laser
 // ============================================
 // VARIABLES
 // ============================================
-
 volatile long encoderCount = 0; 
 int motorSpeed = 65;   // 25% of max speed
 
 // ============================================
-// PID variables
+// Proportional variables
 // ============================================
-
 double kp = 1.5;
 long targetCount = 0;
 int minEffort = 40;
@@ -47,10 +45,10 @@ void encoderISR() {
 }
 
 // ============================================
-// P Controller function
+// PROPORTIONAL CONTROLLER FUNCTION
 // ============================================
-
 long computeP(){
+
   long error = targetCount - encoderCount;
   double output = kp * error;
 
@@ -60,7 +58,7 @@ long computeP(){
     output = -255;
   }
 
-  return output;
+  return (long) output; // return the numbred value as a whole number
 }
 
 
@@ -102,29 +100,30 @@ void setup() {
 // ============================================
 // MAIN LOOP
 // ============================================
-
 void loop() {
 
-  Serial.println("FORWARD");
-  digitalWrite(laserPin, LOW); // Off
-  digitalWrite(phPin, HIGH);   // Forward direction
-  analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
+  
   
   int state = digitalRead(receiverPin); 
   if (state == LOW) {
-    Serial.println("STOP");
-    analogWrite(enPin, 0);        // Brake
-    digitalWrite(laserPin, HIGH); // On
+
     Serial.println("IR DETECTED");
-    delay(5000);                  // Stop for 5 seconds on target
+    targetCount = encoderCount;
+    digitalWrite(laserPin, HIGH); // On
     
     digitalWrite(laserPin, LOW);  // Laser off
     analogWrite(enPin, 255);      // continue
     delay(1000);
+
   } else {
 
+    digitalWrite(laserPin, LOW); // Off
+    digitalWrite(phPin, HIGH);   // Forward direction
+    analogWrite(enPin, motorSpeed);
     Serial.println(state);
   }
   delay(100);
 }
+
+// Serial.println("STOP");
+// analogWrite(enPin, 0); 
