@@ -11,7 +11,7 @@
 
 const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
 const int phPin = 11;    // Direction control → DRV8874 PH/IN2
-const int sleepPin = 9; // Wake up driver
+// const int sleepPin = 9; // Wake up driver
 
 const int receiverPin = 10; // IR data pin (not used yet)
 
@@ -33,11 +33,11 @@ void setup() {
   // Motor control pins
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
-  pinMode(sleepPin, OUTPUT);
+  // pinMode(sleepPin, OUTPUT);
  
   // Wake up the driver
-  digitalWrite(sleepPin, HIGH);
-  delay(10);
+  // digitalWrite(sleepPin, HIGH);
+  // delay(10);
 
   //Laser pin
   pinMode(laserPin, OUTPUT);
