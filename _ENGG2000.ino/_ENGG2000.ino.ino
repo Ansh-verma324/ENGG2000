@@ -1,4 +1,4 @@
-//Trial 2 
+//Trial 2
 
 
 /*
@@ -170,5 +170,3 @@ int state = digitalRead(receiverPin); // Read current IR sensor state (LOW = tar
   delay(100);
 }
 
-// Serial.println("STOP");
-// analogWrite(enPin, 0); 
