@@ -1,13 +1,14 @@
-//Trial 4: 
+//Trial 2
+
 
 /*
- * Motor Control: Forward → Stop → Reverse → Stop
  * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
- */       
+ */
 
 // ============================================
 // PIN DEFINITIONS
 // ============================================
+
 const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
 const int phPin = 8;    // Direction control → DRV8874 PH/IN2
 const int sleepPin = 9; // Wake up driver
@@ -15,17 +16,22 @@ const int sleepPin = 9; // Wake up driver
 const int encA = 2;     // Encoder Channel A (Interrupt pin)
 const int encB = 4;     // Encoder Channel B
 
-const int laserPin = 7; //Pin for the laser 
+const int receiverPin = 10; // IR data pin (not used yet)
 
-/*const int irLedPin = 6; //IR emitter led pin 
-const int irRecieverPin = 7; //IR reciever output pin
-*/
+const int laserPin = 7; //Pin for the laser
 
 // ============================================
 // VARIABLES
 // ============================================
-volatile long encoderCount = 0;
-int motorSpeed = 65;   // 25% of max speed
+volatile long encoderCount = 0; 
+int motorSpeed = 25;   // 10% of max speed
+
+// ============================================
+// Proportional variables
+// ============================================
+double kp = 1.5;
+long targetCount = 0;
+int minEffort = 40;
 
 // ============================================
 // ENCODER INTERRUPT SERVICE ROUTINE
@@ -39,109 +45,128 @@ void encoderISR() {
 }
 
 // ============================================
-// IR FUNCTIONS
+// PROPORTIONAL CONTROLLER FUNCTION
 // ============================================
+long computeP(){
 
-// Sends a short burst of ~38kHz IR by toggling the LED manually
-/*void sendIRBurst() {
-  for (int i = 0; i < 200; i++) {
-    digitalWrite(irLedPin, HIGH); // LED on
-    delayMicroseconds(13);        // ~38kHz half-period (1/38000/2 ≈ 13.16us)
-    digitalWrite(irLedPin, LOW);  // LED off
-    delayMicroseconds(13);
+  long error = targetCount - encoderCount;
+  double output = kp * error;
+
+  if(output > 255){
+    output= 255;
+  } else if(output < -255){
+    output = -255;
   }
+
+  return (long) output; // return the numbred value as a whole number
 }
 
-// Sends the burst, then checks if the receiver picked it up
-bool checkIRDetected() {
-  sendIRBurst();
-  int state = digitalRead(irReceiverPin);
-  return (state == LOW);                  // when signal is detected
-}*/
 
 // ============================================
 // SETUP
 // ============================================
 void setup() {
+
   Serial.begin(9600);
-  
+ 
   // Motor control pins
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
   pinMode(sleepPin, OUTPUT);
-  
+ 
   // Wake up the driver
   digitalWrite(sleepPin, HIGH);
   delay(10);
-  
+ 
   // Encoder pins
   pinMode(encA, INPUT_PULLUP);
   pinMode(encB, INPUT_PULLUP);
 
   //Laser pin
   pinMode(laserPin, OUTPUT);
-  
+ 
+  //IR pin
+  pinMode(receiverPin, INPUT);
+
   // Attach interrupt - encoderISR is now declared
   attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
-  
+ 
   Serial.println("Motor Control Ready!");
-  Serial.println("Sequence: Forward → Stop → Reverse → Stop");
   Serial.println("------------------------------------------");
   delay(1000);
+
 }
 
 // ============================================
 // MAIN LOOP
 // ============================================
 void loop() {
-  // ============================================
-  // 1. MOVE FORWARD
-  // ============================================
-  Serial.println("▶ FORWARD");
-  digitalWrite(laserPin, LOW); // Off
-  digitalWrite(phPin, HIGH);   // Forward direction
-  analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
-  delay(5000);                  // Run for 5 seconds
   
-  // Show encoder counts
-  Serial.print("  Encoder Pulses: ");
-  Serial.println(encoderCount);
-  Serial.println();
-  
-  // ============================================
-  // 2. STOP
-  // ============================================
-  
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
-  
-  // ============================================
-  // 3. MOVE REVERSE
-  // ============================================
-  Serial.println("◀ REVERSE");
-  digitalWrite(laserPin, LOW);  // Off
-  digitalWrite(phPin, LOW);     // Reverse direction
-  analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
-  delay(5000);                  // Run for 5 seconds
-  
-  // Show encoder counts
-  Serial.print("  Encoder Pulses: ");
-  Serial.println(encoderCount);
-  Serial.println();
-  
-  // ============================================
-  // 4. STOP
-  // ============================================
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
-  Serial.println("========== Loop Repeating ==========");
-  Serial.println();
+int state = digitalRead(receiverPin); // Read current IR sensor state (LOW = target detected, for VS1838B)
+
+  if (state == LOW) {
+
+    // ============================================
+    // TARGET DETECTED — lock this position and hold it
+    // ============================================
+
+    Serial.println("IR DETECTED");         // Log that we found the target
+    targetCount = encoderCount;            // Remember exactly where we are right now — this becomes our "home" position
+    digitalWrite(laserPin, HIGH);          // Turn the laser on
+
+    // Hold this position using P control for a fixed observation window,
+    // correcting any drift/displacement caused by momentum
+
+    unsigned long holdStart = millis(); // Record the time we started holding
+    while (millis() - holdStart < 5000) { // Keep correcting for 5 seconds total
+      long correction = computeP(); // Calculate how hard/which way to correct right now
+
+      if (correction >= 0) {
+        digitalWrite(phPin, HIGH);          // Positive correction means drive forward
+
+        int effort; // Declare the effort variable before deciding its value
+        if (correction < minEffort && correction > 0) {
+          effort = minEffort;   // Correction too weak to move the motor — bump it up to minimum effort
+        } else {
+          effort = correction;  // Correction is already strong enough — use it as-is
+        }
+
+        analogWrite(enPin, effort); // Apply that PWM value to the motor
+
+      } else {
+        digitalWrite(phPin, LOW);           // Negative correction means drive reverse
+
+        int effort; // Declare the effort variable before deciding its value
+        if (-correction < minEffort) {
+          effort = minEffort;   // Correction too weak (in reverse) — bump it up to minimum effort
+        } else {
+          effort = -correction; // Correction is already strong enough — use its positive magnitude
+        }
+
+        analogWrite(enPin, effort); // Apply that PWM value to the motor
+      }
+
+      Serial.print("Holding | encoderCount: "); // Debug print: label
+      Serial.print(encoderCount);               // Debug print: current position
+      Serial.print(" | target: ");              // Debug print: label
+      Serial.print(targetCount);                // Debug print: target position
+      Serial.print(" | correction: ");          // Debug print: label
+      Serial.println(correction);               // Debug print: correction value just applied
+
+      delay(20);  // Small pause before checking/correcting again
+    }
+
+    digitalWrite(laserPin, LOW);  // Turn the laser back off after the hold window ends
+    analogWrite(enPin, 0);        // Stop the motor completely
+    delay(1000);                  // Pause a second before resuming search
+
+  } else {
+
+    digitalWrite(laserPin, LOW); // Off
+    digitalWrite(phPin, HIGH);   // Forward direction
+    analogWrite(enPin, motorSpeed);
+    Serial.println(state);
+  }
+  delay(100);
 }
+
