@@ -1,73 +1,42 @@
-//Trial 4: 
-
 /*
- * Motor Control: Forward → Stop → Reverse → Stop
- * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
- */       
+ * Sequential Motor Test with Laser Indicator
+ * 
+ * Sequence:
+ * 1. Motor ramps up/down FORWARD
+ * 2. Motor STOPS
+ * 3. Laser turns ON
+ * 4. Laser turns OFF
+ * 5. Motor ramps up/down REVERSE
+ * 6. Motor STOPS
+ * 7. Laser turns ON
+ * 8. Laser turns OFF
+ * 9. Repeat
+ * 
+ * EN = D3, PH = D11, Laser = D7
+ * SLEEP = 5V (always awake)
+ */
 
 // ============================================
 // PIN DEFINITIONS
 // ============================================
-const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
-const int phPin = 11;    // Direction control → DRV8874 PH/IN2
-const int sleepPin = 9; // Wake up driver
-
-const int laserPin = 7; //Pin for the laser 
-
-/*const int irLedPin = 6; //IR emitter led pin 
-const int irRecieverPin = 7; //IR reciever output pin
-*/
-
-// ============================================
-// VARIABLES
-// ============================================
-
-int motorSpeed = 65;   // 25% of max speed
-
-
-// ============================================
-// IR FUNCTIONS
-// ============================================
-
-// Sends a short burst of ~38kHz IR by toggling the LED manually
-/*void sendIRBurst() {
-  for (int i = 0; i < 200; i++) {
-    digitalWrite(irLedPin, HIGH); // LED on
-    delayMicroseconds(13);        // ~38kHz half-period (1/38000/2 ≈ 13.16us)
-    digitalWrite(irLedPin, LOW);  // LED off
-    delayMicroseconds(13);
-  }
-}
-
-// Sends the burst, then checks if the receiver picked it up
-bool checkIRDetected() {
-  sendIRBurst();
-  int state = digitalRead(irReceiverPin);
-  return (state == LOW);                  // when signal is detected
-}*/
+const int enPin = 3;      // PWM → Speed control
+const int phPin = 11;     // Digital → Direction control
+const int laserPin = 7;   // Laser indicator
 
 // ============================================
 // SETUP
 // ============================================
 void setup() {
-  Serial.begin(9600);
-  
-  // Motor control pins
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
-  pinMode(sleepPin, OUTPUT);
-  
-  // Wake up the driver
-  digitalWrite(sleepPin, HIGH);
-  delay(10);
-
-  //Laser pin
   pinMode(laserPin, OUTPUT);
   
-  Serial.println("Motor Control Ready!");
-  Serial.println("Sequence: Forward → Stop → Reverse → Stop");
-  Serial.println("------------------------------------------");
-  delay(1000);
+  // Ensure motor is stopped and laser off at startup
+  analogWrite(enPin, 0);
+  digitalWrite(phPin, LOW);
+  digitalWrite(laserPin, LOW);
+  
+  delay(100);
 }
 
 // ============================================
@@ -75,41 +44,78 @@ void setup() {
 // ============================================
 void loop() {
   // ============================================
-  // 1. MOVE FORWARD
+  // STEP 1: MOTOR SPINS FORWARD (ramp up/down)
   // ============================================
-  Serial.println("▶ FORWARD");
-  digitalWrite(laserPin, LOW); // Off
   digitalWrite(phPin, HIGH);   // Forward direction
-  analogWrite(enPin, motorSpeed);
-  delay(5000);                  // Run for 5 seconds
+  delay(10);
+  
+  // Ramp up 0 → 255
+  for (int speed = 0; speed <= 255; speed += 5) {
+    analogWrite(enPin, speed);
+    delay(30);
+  }
+  
+  // Ramp down 255 → 0
+  for (int speed = 255; speed >= 0; speed -= 5) {
+    analogWrite(enPin, speed);
+    delay(30);
+  }
   
   // ============================================
-  // 2. STOP
+  // STEP 2: MOTOR STOPS
   // ============================================
-  
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
+  analogWrite(enPin, 0);       // Stop motor
+  delay(1000);                 // Brief pause after spinning
   
   // ============================================
-  // 3. MOVE REVERSE
+  // STEP 3: LASER TURNS ON
   // ============================================
-  Serial.println("◀ REVERSE");
-  digitalWrite(laserPin, LOW);  // Off
-  digitalWrite(phPin, LOW);     // Reverse direction
-  analogWrite(enPin, motorSpeed);
-  delay(5000);                  // Run for 5 seconds
+  digitalWrite(laserPin, HIGH);
+  delay(2000);                 // Laser stays ON for 2 seconds
   
   // ============================================
-  // 4. STOP
+  // STEP 4: LASER TURNS OFF
   // ============================================
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
-  Serial.println("========== Loop Repeating ==========");
-  Serial.println();
+  digitalWrite(laserPin, LOW);
+  delay(500);                  // Brief pause before reversing
+  
+  // ============================================
+  // STEP 5: MOTOR SPINS REVERSE (ramp up/down)
+  // ============================================
+  digitalWrite(phPin, LOW);    // Reverse direction
+  delay(10);
+  
+  // Ramp up 0 → 255
+  for (int speed = 0; speed <= 255; speed += 5) {
+    analogWrite(enPin, speed);
+    delay(30);
+  }
+  
+  // Ramp down 255 → 0
+  for (int speed = 255; speed >= 0; speed -= 5) {
+    analogWrite(enPin, speed);
+    delay(30);
+  }
+  
+  // ============================================
+  // STEP 6: MOTOR STOPS
+  // ============================================
+  analogWrite(enPin, 0);       // Stop motor
+  delay(1000);                 // Brief pause after spinning
+  
+  // ============================================
+  // STEP 7: LASER TURNS ON
+  // ============================================
+  digitalWrite(laserPin, HIGH);
+  delay(2000);                 // Laser stays ON for 2 seconds
+  
+  // ============================================
+  // STEP 8: LASER TURNS OFF
+  // ============================================
+  digitalWrite(laserPin, LOW);
+  delay(500);                  // Brief pause before looping
+  
+  // ============================================
+  // STEP 9: REPEAT
+  // ============================================
 }
