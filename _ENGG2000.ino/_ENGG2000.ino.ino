@@ -12,9 +12,6 @@ const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
 const int phPin = 8;    // Direction control → DRV8874 PH/IN2
 const int sleepPin = 9; // Wake up driver
 
-const int encA = 2;     // Encoder Channel A (Interrupt pin)
-const int encB = 4;     // Encoder Channel B
-
 const int laserPin = 7; //Pin for the laser 
 
 /*const int irLedPin = 6; //IR emitter led pin 
@@ -24,19 +21,9 @@ const int irRecieverPin = 7; //IR reciever output pin
 // ============================================
 // VARIABLES
 // ============================================
-volatile long encoderCount = 0;
+
 int motorSpeed = 65;   // 25% of max speed
 
-// ============================================
-// ENCODER INTERRUPT SERVICE ROUTINE
-// ============================================
-void encoderISR() {
-  if (digitalRead(encB) == HIGH) {
-    encoderCount++;
-  } else {
-    encoderCount--;
-  }
-}
 
 // ============================================
 // IR FUNCTIONS
@@ -73,16 +60,9 @@ void setup() {
   // Wake up the driver
   digitalWrite(sleepPin, HIGH);
   delay(10);
-  
-  // Encoder pins
-  pinMode(encA, INPUT_PULLUP);
-  pinMode(encB, INPUT_PULLUP);
 
   //Laser pin
   pinMode(laserPin, OUTPUT);
-  
-  // Attach interrupt - encoderISR is now declared
-  attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
   
   Serial.println("Motor Control Ready!");
   Serial.println("Sequence: Forward → Stop → Reverse → Stop");
@@ -101,13 +81,7 @@ void loop() {
   digitalWrite(laserPin, LOW); // Off
   digitalWrite(phPin, HIGH);   // Forward direction
   analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
   delay(5000);                  // Run for 5 seconds
-  
-  // Show encoder counts
-  Serial.print("  Encoder Pulses: ");
-  Serial.println(encoderCount);
-  Serial.println();
   
   // ============================================
   // 2. STOP
@@ -126,13 +100,7 @@ void loop() {
   digitalWrite(laserPin, LOW);  // Off
   digitalWrite(phPin, LOW);     // Reverse direction
   analogWrite(enPin, motorSpeed);
-  encoderCount = 0;             // Reset encoder count
   delay(5000);                  // Run for 5 seconds
-  
-  // Show encoder counts
-  Serial.print("  Encoder Pulses: ");
-  Serial.println(encoderCount);
-  Serial.println();
   
   // ============================================
   // 4. STOP
