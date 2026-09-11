@@ -24,7 +24,7 @@ const int laserPin = 7; //Pin for the laser
 // VARIABLES
 // ============================================
 volatile long encoderCount = 0; 
-int motorSpeed = 65;   // 25% of max speed
+int motorSpeed = 25;   // 10% of max speed
 
 // ============================================
 // Proportional variables
@@ -101,19 +101,64 @@ void setup() {
 // MAIN LOOP
 // ============================================
 void loop() {
+  
+int state = digitalRead(receiverPin); // Read current IR sensor state (LOW = target detected, for VS1838B)
 
-  
-  
-  int state = digitalRead(receiverPin); 
   if (state == LOW) {
 
-    Serial.println("IR DETECTED");
-    targetCount = encoderCount;
-    digitalWrite(laserPin, HIGH); // On
-    
-    digitalWrite(laserPin, LOW);  // Laser off
-    analogWrite(enPin, 255);      // continue
-    delay(1000);
+    // ============================================
+    // TARGET DETECTED — lock this position and hold it
+    // ============================================
+
+    Serial.println("IR DETECTED");         // Log that we found the target
+    targetCount = encoderCount;            // Remember exactly where we are right now — this becomes our "home" position
+    digitalWrite(laserPin, HIGH);          // Turn the laser on
+
+    // Hold this position using P control for a fixed observation window,
+    // correcting any drift/displacement caused by momentum
+
+    unsigned long holdStart = millis(); // Record the time we started holding
+    while (millis() - holdStart < 5000) { // Keep correcting for 5 seconds total
+      long correction = computeP(); // Calculate how hard/which way to correct right now
+
+      if (correction >= 0) {
+        digitalWrite(phPin, HIGH);          // Positive correction means drive forward
+
+        int effort; // Declare the effort variable before deciding its value
+        if (correction < minEffort && correction > 0) {
+          effort = minEffort;   // Correction too weak to move the motor — bump it up to minimum effort
+        } else {
+          effort = correction;  // Correction is already strong enough — use it as-is
+        }
+
+        analogWrite(enPin, effort); // Apply that PWM value to the motor
+
+      } else {
+        digitalWrite(phPin, LOW);           // Negative correction means drive reverse
+
+        int effort; // Declare the effort variable before deciding its value
+        if (-correction < minEffort) {
+          effort = minEffort;   // Correction too weak (in reverse) — bump it up to minimum effort
+        } else {
+          effort = -correction; // Correction is already strong enough — use its positive magnitude
+        }
+
+        analogWrite(enPin, effort); // Apply that PWM value to the motor
+      }
+
+      Serial.print("Holding | encoderCount: "); // Debug print: label
+      Serial.print(encoderCount);               // Debug print: current position
+      Serial.print(" | target: ");              // Debug print: label
+      Serial.print(targetCount);                // Debug print: target position
+      Serial.print(" | correction: ");          // Debug print: label
+      Serial.println(correction);               // Debug print: correction value just applied
+
+      delay(20);  // Small pause before checking/correcting again
+    }
+
+    digitalWrite(laserPin, LOW);  // Turn the laser back off after the hold window ends
+    analogWrite(enPin, 0);        // Stop the motor completely
+    delay(1000);                  // Pause a second before resuming search
 
   } else {
 
