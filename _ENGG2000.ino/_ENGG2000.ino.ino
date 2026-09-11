@@ -63,6 +63,7 @@ void loop() {
   analogWrite(enPin, motorSpeed);
   
   int state = digitalRead(receiverPin); 
+
   if (state == LOW) {
     Serial.println("STOP");
     analogWrite(enPin, 0);        // Brake
