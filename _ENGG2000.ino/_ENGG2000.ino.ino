@@ -1,4 +1,4 @@
-*
+/*
 * IR-Triggered Motor Stop with Laser (Noise-Filtered)
 * 
 * Behaviour:
