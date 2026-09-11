@@ -1,73 +1,44 @@
-//Trial 4: 
-
 /*
- * Motor Control: Forward → Stop → Reverse → Stop
- * Arduino Uno + DRV8874 + GB37Y3530 DC Motor with Encoder
- */       
+ * Sequential Motor Test with Laser Indicator
+ * 
+ * Sequence:
+ * 1. Motor ramps up/down FORWARD
+ * 2. Motor STOPS
+ * 3. Laser turns ON
+ * 4. Laser turns OFF
+ * 5. Motor ramps up/down REVERSE
+ * 6. Motor STOPS
+ * 7. Laser turns ON
+ * 8. Laser turns OFF
+ * 9. Repeat
+ * 
+ * EN = D3, PH = D11, Laser = D7
+ * SLEEP = 5V (always awake)
+ */
 
 // ============================================
 // PIN DEFINITIONS
 // ============================================
-const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
-const int phPin = 11;    // Direction control → DRV8874 PH/IN2
-const int sleepPin = 9; // Wake up driver
-
-const int laserPin = 7; //Pin for the laser 
-
-/*const int irLedPin = 6; //IR emitter led pin 
-const int irRecieverPin = 7; //IR reciever output pin
-*/
-
-// ============================================
-// VARIABLES
-// ============================================
-
-int motorSpeed = 65;   // 25% of max speed
-
-
-// ============================================
-// IR FUNCTIONS
-// ============================================
-
-// Sends a short burst of ~38kHz IR by toggling the LED manually
-/*void sendIRBurst() {
-  for (int i = 0; i < 200; i++) {
-    digitalWrite(irLedPin, HIGH); // LED on
-    delayMicroseconds(13);        // ~38kHz half-period (1/38000/2 ≈ 13.16us)
-    digitalWrite(irLedPin, LOW);  // LED off
-    delayMicroseconds(13);
-  }
-}
-
-// Sends the burst, then checks if the receiver picked it up
-bool checkIRDetected() {
-  sendIRBurst();
-  int state = digitalRead(irReceiverPin);
-  return (state == LOW);                  // when signal is detected
-}*/
+const int enPin = 3;      // PWM → Speed control
+const int phPin = 11;     // Digital → Direction control
+const int laserPin = 7;   // Laser indicator
+const int receiverPin = 8;
 
 // ============================================
 // SETUP
 // ============================================
 void setup() {
-  Serial.begin(9600);
-  
-  // Motor control pins
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
-  pinMode(sleepPin, OUTPUT);
-  
-  // Wake up the driver
-  digitalWrite(sleepPin, HIGH);
-  delay(10);
-
-  //Laser pin
   pinMode(laserPin, OUTPUT);
+  pinMode(receiverPin, INPUT);
+
+  // Ensure motor is stopped and laser off at startup
+  digitalWrite(phPin, HIGH);
+  analogWrite(enPin, 0);
+  digitalWrite(laserPin, LOW);
   
-  Serial.println("Motor Control Ready!");
-  Serial.println("Sequence: Forward → Stop → Reverse → Stop");
-  Serial.println("------------------------------------------");
-  delay(1000);
+  delay(100);
 }
 
 // ============================================
@@ -75,41 +46,58 @@ void setup() {
 // ============================================
 void loop() {
   // ============================================
-  // 1. MOVE FORWARD
-  // ============================================
-  Serial.println("▶ FORWARD");
-  digitalWrite(laserPin, LOW); // Off
-  digitalWrite(phPin, HIGH);   // Forward direction
-  analogWrite(enPin, motorSpeed);
-  delay(5000);                  // Run for 5 seconds
-  
-  // ============================================
-  // 2. STOP
+  // STEP 1: MOTOR SPINS FORWARD (ramp up/down)
   // ============================================
   
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
   
-  // ============================================
-  // 3. MOVE REVERSE
-  // ============================================
-  Serial.println("◀ REVERSE");
-  digitalWrite(laserPin, LOW);  // Off
-  digitalWrite(phPin, LOW);     // Reverse direction
-  analogWrite(enPin, motorSpeed);
-  delay(5000);                  // Run for 5 seconds
+  // Ramp up 0 → 255
+  for (int speed = 0; speed <= 255; speed += 5) {
+    analogWrite(enPin, speed);
+  int state = digitalRead(receiverPin); 
+  if (state == LOW) {
   
-  // ============================================
-  // 4. STOP
-  // ============================================
-  Serial.println("■ STOP");
-  analogWrite(enPin, 0);        // Brake
-  digitalWrite(laserPin, HIGH); // On
-  delay(2000);                  // Stop for 2 seconds
-  Serial.println();
-  Serial.println("========== Loop Repeating ==========");
-  Serial.println();
+    // Ramp down 255 → 0
+  for (int stopSpeed = speed; stopSpeed >= 0; stopSpeed -= 5) {
+    analogWrite(enPin, stopSpeed);
+    delay(30);
+  }
+  analogWrite(enPin, 0);       // Stop motor
+  
+  digitalWrite(laserPin, HIGH);
+  delay(2000);                 // Laser stays ON for 2 seconds
+  
+  digitalWrite(laserPin, LOW);
+  delay(500);                  // Brief pause before reversing
+  return;
+  }
+  delay (30);
+  }
+      while (true) {
+
+    analogWrite(enPin, 255);
+
+    int state = digitalRead(receiverPin);
+
+    if (state == LOW) {
+
+      Serial.println("IR DETECTED");
+
+      analogWrite(enPin, 0);
+      Serial.println("MOTOR STOPPED");
+
+      digitalWrite(laserPin, HIGH);
+      Serial.println("LASER ON");
+
+      delay(2000);
+
+      digitalWrite(laserPin, LOW);
+      Serial.println("LASER OFF");
+
+      delay(500);
+
+      break; // go back and ramp motor up again
+    }
+
+    delay(20);
+}
 }
