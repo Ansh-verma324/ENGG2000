@@ -21,10 +21,10 @@ const int phPin = 11; // Motor direction → DRV8874 PH/IN2
 // ============================================
 void setup() {
 
-pinMode(irPin, INPUT_PULLUP);
-pinMode(laserPin, OUTPUT);
-pinMode(enPin, OUTPUT);
-pinMode(phPin, OUTPUT);
+  pinMode(irPin, INPUT_PULLUP);
+  pinMode(laserPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  pinMode(phPin, OUTPUT);
 
 }
 
@@ -33,22 +33,23 @@ pinMode(phPin, OUTPUT);
 // ============================================
 void loop() {
 
-digitalWrite(phPin, HIGH);
-analogWrite(enPin, 65);
-digitalWrite(laserPin, LOW);
+  digitalWrite(phPin, HIGH);
+  analogWrite(enPin, 65);
+  digitalWrite(laserPin, LOW);
 
-int state = digitalRead(irPin);
+  int state = digitalRead(irPin);
 
-if (state == LOW) {
-analogWrite(enPin, 0); // Stop motor
-digitalWrite(laserPin, HIGH); // Laser ON
-delay(5000);
-} 
-else {
-// No IR → Motor spins forward, Laser OFF
-digitalWrite(phPin, HIGH);
-analogWrite(enPin, 65);
-digitalWrite(laserPin, LOW);
-delay(50); // Ignore sensor during motor startup spike
-}
+  if (state == LOW) {
+    
+    analogWrite(enPin, 0); // Stop motor
+    digitalWrite(laserPin, HIGH); // Laser ON
+    delay(5000);
+  } else {
+
+    // No IR → Motor spins forward, Laser OFF
+    digitalWrite(phPin, HIGH);
+    analogWrite(enPin, 65);
+    digitalWrite(laserPin, LOW);
+    delay(50); // Ignore sensor during motor startup spike
+  }
 }
