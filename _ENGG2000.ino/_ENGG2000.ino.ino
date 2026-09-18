@@ -11,10 +11,9 @@
 
 const int enPin = 3;    // Speed control (PWM) → DRV8874 EN/IN1
 const int phPin = 11;    // Direction control → DRV8874 PH/IN2
-const int sleepPin = 9; // Wake up driver
 
-const int encA = 2;     // Encoder Channel A (Interrupt pin)
-const int encB = 4;     // Encoder Channel B
+const int encA = 6;     // Encoder Channel A (Interrupt pin)
+const int encB = 5;     // Encoder Channel B
 
 const int receiverPin = 10; // IR data pin (not used yet)
 
@@ -72,11 +71,6 @@ void setup() {
   // Motor control pins
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
-  pinMode(sleepPin, OUTPUT);
- 
-  // Wake up the driver
-  digitalWrite(sleepPin, HIGH);
-  delay(10);
  
   // Encoder pins
   pinMode(encA, INPUT_PULLUP);
