@@ -1,103 +1,276 @@
 /*
- * Sequential Motor Test with Laser Indicator
- * 
- * Sequence:
- * 1. Motor ramps up/down FORWARD
- * 2. Motor STOPS
- * 3. Laser turns ON
- * 4. Laser turns OFF
- * 5. Motor ramps up/down REVERSE
- * 6. Motor STOPS
- * 7. Laser turns ON
- * 8. Laser turns OFF
- * 9. Repeat
- * 
- * EN = D3, PH = D11, Laser = D7
- * SLEEP = 5V (always awake)
+ * IR Search + Encoder Position Hold + Laser
+ *
+ * Behaviour:
+ * - No IR -> Motor searches forward
+ * - IR detected -> Save current encoder position
+ * - Laser ON
+ * - P controller holds that position for 2 seconds
+ * - Laser OFF
+ * - Resume search
  */
 
 // ============================================
 // PIN DEFINITIONS
 // ============================================
-const int enPin = 3;      // PWM → Speed control
-const int phPin = 11;     // Digital → Direction control
-const int laserPin = 7;   // Laser indicator
-const int receiverPin = 8;
+
+const int irPin = 8;
+
+const int laserPin = 7;
+
+const int enPin = 3;
+const int phPin = 11;
+
+// IMPORTANT: D2 supports interrupt on Arduino Uno
+const int encA = 2;
+const int encB = 5;
+
+
+// ============================================
+// VARIABLES
+// ============================================
+
+volatile long encoderCount = 0;
+
+long targetCount = 0;
+
+double kp = 1.5;
+
+int minEffort = 40;
+
+int searchSpeed = 65;
+
+
+// ============================================
+// ENCODER INTERRUPT
+// ============================================
+
+void encoderISR() {
+
+  if (digitalRead(encB) == HIGH) {
+
+    encoderCount++;
+
+  } else {
+
+    encoderCount--;
+
+  }
+}
+
+
+// ============================================
+// PROPORTIONAL CONTROLLER
+// ============================================
+
+long computeP() {
+
+  long error = targetCount - encoderCount;
+
+  double output = kp * error;
+
+
+  // Limit output to valid PWM range
+
+  if (output > 255) {
+
+    output = 255;
+
+  }
+
+  else if (output < -255) {
+
+    output = -255;
+
+  }
+
+
+  return (long)output;
+}
+
 
 // ============================================
 // SETUP
 // ============================================
+
 void setup() {
+
+  Serial.begin(9600);
+
+
+  // IR
+  pinMode(irPin, INPUT_PULLUP);
+
+
+  // Laser
+  pinMode(laserPin, OUTPUT);
+
+
+  // Motor
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
-  pinMode(laserPin, OUTPUT);
-  pinMode(receiverPin, INPUT);
 
-  // Ensure motor is stopped and laser off at startup
-  digitalWrite(phPin, HIGH);
-  analogWrite(enPin, 0);
+
+  // Encoder
+  pinMode(encA, INPUT_PULLUP);
+  pinMode(encB, INPUT_PULLUP);
+
+
+  // Run encoderISR whenever encoder A changes
+
+  attachInterrupt(
+    digitalPinToInterrupt(encA),
+    encoderISR,
+    CHANGE
+  );
+
+
   digitalWrite(laserPin, LOW);
-  
-  delay(100);
+
+  Serial.println("System Ready");
 }
+
 
 // ============================================
 // MAIN LOOP
 // ============================================
+
 void loop() {
-  // ============================================
-  // STEP 1: MOTOR SPINS FORWARD (ramp up/down)
-  // ============================================
-  
-  
-  // Ramp up 0 → 255
-  for (int speed = 0; speed <= 255; speed += 5) {
-    analogWrite(enPin, speed);
-  int state = digitalRead(receiverPin); 
+
+  int state = digitalRead(irPin);
+
+
+  // ==========================================
+  // IR DETECTED
+  // ==========================================
+
   if (state == LOW) {
-  
-    // Ramp down 255 → 0
-  for (int stopSpeed = speed; stopSpeed >= 0; stopSpeed -= 5) {
-    analogWrite(enPin, stopSpeed);
-    delay(30);
-  }
-  analogWrite(enPin, 0);       // Stop motor
-  
-  digitalWrite(laserPin, HIGH);
-  delay(2000);                 // Laser stays ON for 2 seconds
-  
-  digitalWrite(laserPin, LOW);
-  delay(500);                  // Brief pause before reversing
-  return;
-  }
-  delay (30);
-  }
-      while (true) {
 
-    analogWrite(enPin, 255);
+    Serial.println("IR DETECTED");
 
-    int state = digitalRead(receiverPin);
 
-    if (state == LOW) {
+    // Save the exact position where target was found
 
-      Serial.println("IR DETECTED");
+    targetCount = encoderCount;
 
-      analogWrite(enPin, 0);
-      Serial.println("MOTOR STOPPED");
 
-      digitalWrite(laserPin, HIGH);
-      Serial.println("LASER ON");
+    // Laser ON
 
-      delay(2000);
+    digitalWrite(laserPin, HIGH);
 
-      digitalWrite(laserPin, LOW);
-      Serial.println("LASER OFF");
 
-      delay(500);
+    // Start 5 second hold period
 
-      break; // go back and ramp motor up again
+    unsigned long holdStart = millis();
+
+
+    while (millis() - holdStart < 2000) {
+
+      long correction = computeP();
+
+
+      // ======================================
+      // Already at target
+      // ======================================
+
+      if (correction == 0) {
+
+        analogWrite(enPin, 0);
+
+      }
+
+
+      // ======================================
+      // Need to move forward
+      // ======================================
+
+      else if (correction > 0) {
+
+        digitalWrite(phPin, HIGH);
+
+        int effort = correction;
+
+
+        if (effort < minEffort) {
+
+          effort = minEffort;
+
+        }
+
+
+        analogWrite(enPin, effort);
+
+      }
+
+
+      // ======================================
+      // Need to move backward
+      // ======================================
+
+      else {
+
+        digitalWrite(phPin, LOW);
+
+        int effort = -correction;
+
+
+        if (effort < minEffort) {
+
+          effort = minEffort;
+
+        }
+
+
+        analogWrite(enPin, effort);
+
+      }
+
+
+      // ======================================
+      // DEBUG INFORMATION
+      // ======================================
+
+      Serial.print("Current: ");
+      Serial.print(encoderCount);
+
+      Serial.print(" | Target: ");
+      Serial.print(targetCount);
+
+      Serial.print(" | Error: ");
+      Serial.print(targetCount - encoderCount);
+
+      Serial.print(" | Correction: ");
+      Serial.println(correction);
+
+
+      delay(20);
     }
 
-    delay(20);
-}
+
+    // ========================================
+    // Finished firing
+    // ========================================
+
+    digitalWrite(laserPin, LOW);
+
+    analogWrite(enPin, 0);
+
+    delay(1000);
+  }
+
+
+  // ==========================================
+  // NO IR -> SEARCH
+  // ==========================================
+
+  else {
+
+    digitalWrite(laserPin, LOW);
+
+    digitalWrite(phPin, HIGH);
+
+    analogWrite(enPin, searchSpeed);
+
+    delay(50);
+  }
 }
