@@ -1,6 +1,6 @@
 
 
-//Trial 4: 
+//Trial 4: Default backup incase nothing works
 
 /*
  * Motor Control: Forward → Stop → Reverse → Stop
