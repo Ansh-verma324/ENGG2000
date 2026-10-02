@@ -1,3 +1,5 @@
+//Trial 8: Working Trial 2 code extended to implement Gyroscope values
+
 /*
 * IR-Triggered Motor Stop with Laser (Noise-Filtered)
 * 
