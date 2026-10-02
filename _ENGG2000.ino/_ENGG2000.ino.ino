@@ -1,3 +1,5 @@
+//Trial 6-7: merge of Trial 5 and 8 (working codes), still to be tested
+
 /*
  * IR Search + Encoder Position Hold + Laser
  *
