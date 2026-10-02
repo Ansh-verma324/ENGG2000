@@ -1,4 +1,4 @@
-//Trial 2 
+//Trial 2: Prototype code for Motor, Laser and Senor
 
 
 /*
