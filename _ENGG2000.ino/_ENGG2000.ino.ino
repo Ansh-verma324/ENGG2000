@@ -1,4 +1,4 @@
-// ENTIRELY NEW SAMPLE
+// Trial 3: Irrelevant Don't use
 
 #include <IRremote.h>
 
