@@ -1,3 +1,5 @@
+//Trial 6: Test code for Motor, Laser and Sensor that still needs assesment
+
 /*
  * Sequential Motor Test with Laser Indicator
  * 
