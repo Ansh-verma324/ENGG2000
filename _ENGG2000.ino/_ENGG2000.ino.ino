@@ -48,15 +48,10 @@ int searchSpeed = 65;
 // ============================================
 
 void encoderISR() {
-
   if (digitalRead(encB) == HIGH) {
-
     encoderCount++;
-
   } else {
-
     encoderCount--;
-
   }
 }
 
@@ -68,24 +63,16 @@ void encoderISR() {
 long computeP() {
 
   long error = targetCount - encoderCount;
-
   double output = kp * error;
-
 
   // Limit output to valid PWM range
 
-  if (output > 255) {
-
+  if (output > 255) 
     output = 255;
-
   }
-
   else if (output < -255) {
-
     output = -255;
-
   }
-
 
   return (long)output;
 }
@@ -96,37 +83,26 @@ long computeP() {
 // ============================================
 
 void setup() {
-
   Serial.begin(9600);
-
 
   // IR
   pinMode(irPin, INPUT_PULLUP);
 
-
   // Laser
   pinMode(laserPin, OUTPUT);
-
 
   // Motor
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
 
-
   // Encoder
   pinMode(encA, INPUT_PULLUP);
   pinMode(encB, INPUT_PULLUP);
 
-
   // Run encoderISR whenever encoder A changes
 
-  attachInterrupt(
-    digitalPinToInterrupt(encA),
-    encoderISR,
-    CHANGE
-  );
-
-
+  attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
+  
   digitalWrite(laserPin, LOW);
 
   Serial.println("System Ready");
@@ -137,96 +113,68 @@ void setup() {
 // MAIN LOOP
 // ============================================
 
-void loop() {
+void loop() { 
 
   int state = digitalRead(irPin);
-
 
   // ==========================================
   // IR DETECTED
   // ==========================================
 
   if (state == LOW) {
-
     Serial.println("IR DETECTED");
 
-
     // Save the exact position where target was found
-
     targetCount = encoderCount;
 
-
     // Laser ON
-
     digitalWrite(laserPin, HIGH);
 
-
     // Start 5 second hold period
-
     unsigned long holdStart = millis();
 
-
     while (millis() - holdStart < 2000) {
-
       long correction = computeP();
-
 
       // ======================================
       // Already at target
       // ======================================
 
       if (correction == 0) {
-
         analogWrite(enPin, 0);
-
       }
-
 
       // ======================================
       // Need to move forward
       // ======================================
 
       else if (correction > 0) {
-
         digitalWrite(phPin, HIGH);
-
         int effort = correction;
 
-
         if (effort < minEffort) {
-
           effort = minEffort;
-
         }
-
 
         analogWrite(enPin, effort);
 
       }
-
 
       // ======================================
       // Need to move backward
       // ======================================
 
       else {
-
         digitalWrite(phPin, LOW);
-
         int effort = -correction;
 
-
         if (effort < minEffort) {
-
           effort = minEffort;
-
         }
-
 
         analogWrite(enPin, effort);
 
       }
-
 
       // ======================================
       // DEBUG INFORMATION
