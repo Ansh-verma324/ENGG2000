@@ -27,7 +27,7 @@ const int phPin = 11;
 const int encA = 2;
 const int encB = 5;
 
-const int switchPin = 12; // Change this to correct pin
+const int switchPin = 10; // Change this to correct pin
 
 
 // ============================================
