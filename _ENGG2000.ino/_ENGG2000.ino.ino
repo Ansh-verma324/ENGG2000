@@ -24,7 +24,7 @@ const int enPin = 3;
 const int phPin = 11;
 
 // IMPORTANT: D2 supports interrupt on Arduino Uno
-const int encA = 2;
+const int encA = 6;
 const int encB = 5;
 
 const int switchPin = 10; // Change this to correct pin
