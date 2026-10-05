@@ -27,6 +27,8 @@ const int phPin = 11;
 const int encA = 2;
 const int encB = 5;
 
+const int switchPin = 12; // Change this to correct pin
+
 
 // ============================================
 // VARIABLES
@@ -67,7 +69,7 @@ long computeP() {
 
   // Limit output to valid PWM range
 
-  if (output > 255) 
+  if (output > 255){ 
     output = 255;
   }
   else if (output < -255) {
@@ -99,6 +101,9 @@ void setup() {
   pinMode(encA, INPUT_PULLUP);
   pinMode(encB, INPUT_PULLUP);
 
+  // Switch
+  pinMode(switchPin, INPUT_PULLUP);
+
   // Run encoderISR whenever encoder A changes
 
   attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
@@ -114,6 +119,14 @@ void setup() {
 // ============================================
 
 void loop() { 
+
+  bool systemOn = (digitalRead(switchPin) == LOW);
+
+  if(!systemOn){
+    analogWrite(enPin, 0);
+    digitalWrite(laserPin, LOW);
+    return;
+  }
 
   int state = digitalRead(irPin);
 
