@@ -30,7 +30,7 @@ const int laserPin = 7;
 const int enPin = 3;
 const int phPin = 11;
 
-const int switchPin = 10; // Change this to correct pin
+// const int switchPin = 10; // Change this to correct pin
 
 // ============================================
 // GYRO VARIABLES
@@ -105,7 +105,7 @@ void setup() {
   pinMode(phPin, OUTPUT);
 
   // Switch
-  pinMode(switchPin, INPUT_PULLUP);
+  // pinMode(switchPin, INPUT_PULLUP);
 
   digitalWrite(laserPin, LOW);
 
@@ -120,13 +120,13 @@ void setup() {
 
 void loop() {
 
-  bool systemOn = (digitalRead(switchPin) == LOW);
+  // bool systemOn = (digitalRead(switchPin) == LOW);
 
-  if (!systemOn) {
-    analogWrite(enPin, 0);
-    digitalWrite(laserPin, LOW);
-    return;
-  }
+  // if (!systemOn) {
+    // analogWrite(enPin, 0);
+    // digitalWrite(laserPin, LOW);
+    // return;
+  // }
 
   updateGyroAngle(); // keep the angle estimate current every loop pass
 
