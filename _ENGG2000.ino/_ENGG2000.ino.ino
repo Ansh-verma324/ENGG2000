@@ -1,13 +1,20 @@
-//Trial 6-7: merge of Trial 5 and 8 (working codes), still to be tested
+//Trial 10: Merge of Trial 6-7 (encoder + P control + switch) and Trial 8 (gyro)
+// Correction during hold is now based on gyro-measured angle displacement
+
+#include <Wire.h>
+#include <MPU6050_light.h>
+
+MPU6050 mpu(Wire);
 
 /*
- * IR Search + Encoder Position Hold + Laser
+ * IR Search + Gyro-Based Angle Hold + Laser + Switch
  *
  * Behaviour:
- * - No IR -> Motor searches forward
- * - IR detected -> Save current encoder position
+ * - Switch OFF -> everything stops
+ * - Switch ON, No IR -> Motor searches forward
+ * - Switch ON, IR detected -> Save current gyro angle as target
  * - Laser ON
- * - P controller holds that position for 2 seconds
+ * - P controller corrects based on GYRO angle error for 2 seconds
  * - Laser OFF
  * - Resume search
  */
@@ -23,53 +30,48 @@ const int laserPin = 7;
 const int enPin = 3;
 const int phPin = 11;
 
-// IMPORTANT: D2 supports interrupt on Arduino Uno
-const int encA = 6;
-const int encB = 5;
-
 const int switchPin = 10; // Change this to correct pin
 
+// ============================================
+// GYRO VARIABLES
+// ============================================
+
+float gyroZ = 0;          // current angular velocity, deg/s
+float gyroAngle = 0;      // integrated angle estimate, degrees
+float targetAngle = 0;    // angle we want to hold, degrees
+unsigned long lastGyroTime = 0;
 
 // ============================================
-// VARIABLES
+// PROPORTIONAL CONTROLLER VARIABLES
 // ============================================
 
-volatile long encoderCount = 0;
-
-long targetCount = 0;
-
-double kp = 1.5;
-
+double kp = 1.5;          // will likely need retuning for angle-based error — start lower and test
 int minEffort = 40;
-
 int searchSpeed = 65;
 
-
 // ============================================
-// ENCODER INTERRUPT
+// UPDATE GYRO ANGLE (integrates velocity into position)
 // ============================================
+void updateGyroAngle() {
+  mpu.update();
+  unsigned long now = millis();
+  float dt = (now - lastGyroTime) / 1000.0;
+  if (dt <= 0) dt = 0.001; // guard against divide-by-zero on first call
+  lastGyroTime = now;
 
-void encoderISR() {
-  if (digitalRead(encB) == HIGH) {
-    encoderCount++;
-  } else {
-    encoderCount--;
-  }
+  gyroZ = mpu.getGyroZ();
+  gyroAngle += gyroZ * dt; // accumulate velocity into an angle estimate
 }
 
-
 // ============================================
-// PROPORTIONAL CONTROLLER
+// PROPORTIONAL CONTROLLER (angle-based)
 // ============================================
-
 long computeP() {
 
-  long error = targetCount - encoderCount;
+  float error = targetAngle - gyroAngle; // error in degrees now, not encoder ticks
   double output = kp * error;
 
-  // Limit output to valid PWM range
-
-  if (output > 255){ 
+  if (output > 255) {
     output = 255;
   }
   else if (output < -255) {
@@ -79,13 +81,18 @@ long computeP() {
   return (long)output;
 }
 
-
 // ============================================
 // SETUP
 // ============================================
 
 void setup() {
   Serial.begin(9600);
+  Wire.begin();
+
+  mpu.begin();
+  Serial.println("Calculating gyro offsets, do not move MPU6050...");
+  mpu.calcOffsets();
+  Serial.println("Done!");
 
   // IR
   pinMode(irPin, INPUT_PULLUP);
@@ -97,36 +104,31 @@ void setup() {
   pinMode(enPin, OUTPUT);
   pinMode(phPin, OUTPUT);
 
-  // Encoder
-  pinMode(encA, INPUT_PULLUP);
-  pinMode(encB, INPUT_PULLUP);
-
   // Switch
   pinMode(switchPin, INPUT_PULLUP);
 
-  // Run encoderISR whenever encoder A changes
-
-  attachInterrupt(digitalPinToInterrupt(encA), encoderISR, CHANGE);
-  
   digitalWrite(laserPin, LOW);
+
+  lastGyroTime = millis();
 
   Serial.println("System Ready");
 }
-
 
 // ============================================
 // MAIN LOOP
 // ============================================
 
-void loop() { 
+void loop() {
 
   bool systemOn = (digitalRead(switchPin) == LOW);
 
-  if(!systemOn){
+  if (!systemOn) {
     analogWrite(enPin, 0);
     digitalWrite(laserPin, LOW);
     return;
   }
+
+  updateGyroAngle(); // keep the angle estimate current every loop pass
 
   int state = digitalRead(irPin);
 
@@ -137,103 +139,63 @@ void loop() {
   if (state == LOW) {
     Serial.println("IR DETECTED");
 
-    // Save the exact position where target was found
-    targetCount = encoderCount;
+    // Save the current gyro-estimated angle as our hold target
+    targetAngle = gyroAngle;
 
-    // Laser ON
     digitalWrite(laserPin, HIGH);
 
-    // Start 5 second hold period
     unsigned long holdStart = millis();
 
     while (millis() - holdStart < 2000) {
-      long correction = computeP();
+      updateGyroAngle(); // refresh angle estimate during the hold too
 
-      // ======================================
-      // Already at target
-      // ======================================
+      long correction = computeP();
 
       if (correction == 0) {
         analogWrite(enPin, 0);
       }
-
-      // ======================================
-      // Need to move forward
-      // ======================================
-
       else if (correction > 0) {
         digitalWrite(phPin, HIGH);
         int effort = correction;
-
         if (effort < minEffort) {
           effort = minEffort;
         }
-
         analogWrite(enPin, effort);
-
       }
-
-      // ======================================
-      // Need to move backward
-      // ======================================
-
       else {
         digitalWrite(phPin, LOW);
         int effort = -correction;
-
         if (effort < minEffort) {
           effort = minEffort;
         }
-
         analogWrite(enPin, effort);
-
       }
 
-      // ======================================
-      // DEBUG INFORMATION
-      // ======================================
-
-      Serial.print("Current: ");
-      Serial.print(encoderCount);
-
+      Serial.print("GyroAngle: ");
+      Serial.print(gyroAngle);
       Serial.print(" | Target: ");
-      Serial.print(targetCount);
-
+      Serial.print(targetAngle);
       Serial.print(" | Error: ");
-      Serial.print(targetCount - encoderCount);
-
+      Serial.print(targetAngle - gyroAngle);
       Serial.print(" | Correction: ");
       Serial.println(correction);
-
 
       delay(20);
     }
 
-
-    // ========================================
-    // Finished firing
-    // ========================================
-
     digitalWrite(laserPin, LOW);
-
     analogWrite(enPin, 0);
-
     delay(1000);
   }
-
 
   // ==========================================
   // NO IR -> SEARCH
   // ==========================================
 
   else {
-
     digitalWrite(laserPin, LOW);
-
     digitalWrite(phPin, HIGH);
-
     analogWrite(enPin, searchSpeed);
-
     delay(50);
   }
 }
