@@ -59,7 +59,7 @@ void updateGyroAngle() {
   if (dt <= 0) dt = 0.001; // guard against divide-by-zero on first call
   lastGyroTime = now;
 
-  gyroY = mpu.getGyroY();
+  gyroY = mpu.getGyroX();
   gyroAngle += gyroY * dt; // accumulate velocity into an angle estimate
 }
 
