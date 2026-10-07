@@ -36,7 +36,7 @@ const int switchPin = 10; // Change this to correct pin
 // GYRO VARIABLES
 // ============================================
 
-float gyroZ = 0;          // current angular velocity, deg/s
+float gyroY = 0;          // current angular velocity, deg/s
 float gyroAngle = 0;      // integrated angle estimate, degrees
 float targetAngle = 0;    // angle we want to hold, degrees
 unsigned long lastGyroTime = 0;
@@ -59,8 +59,8 @@ void updateGyroAngle() {
   if (dt <= 0) dt = 0.001; // guard against divide-by-zero on first call
   lastGyroTime = now;
 
-  gyroZ = mpu.getGyroZ();
-  gyroAngle += gyroZ * dt; // accumulate velocity into an angle estimate
+  gyroY = mpu.getGyroY();
+  gyroAngle += gyroY * dt; // accumulate velocity into an angle estimate
 }
 
 // ============================================
