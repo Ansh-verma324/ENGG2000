@@ -70,13 +70,13 @@ void loop() {
     
     analogWrite(enPin, 0); // Stop motor
     digitalWrite(laserPin, HIGH); // Laser ON
-    delay(5000);
+    delay(2000);
   } else {
 
     // No IR → Motor spins forward, Laser OFF
     digitalWrite(phPin, HIGH);
     analogWrite(enPin, 65);
     digitalWrite(laserPin, LOW);
-    delay(50);
+    delay(2000);
   }
 }
