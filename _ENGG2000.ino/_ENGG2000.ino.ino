@@ -77,6 +77,6 @@ void loop() {
     digitalWrite(phPin, HIGH);
     analogWrite(enPin, 65);
     digitalWrite(laserPin, LOW);
-    delay(2000);
+    delay(50);
   }
 }
