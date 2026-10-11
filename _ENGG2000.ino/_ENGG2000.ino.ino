@@ -150,13 +150,14 @@ void loop() {
       updateGyroAngle(); // refresh angle estimate during the hold too
 
       long correction = computeP();
+      int effort = 0;
 
       if (correction == 0) {
         analogWrite(enPin, 0);
       }
       else if (correction > 0) {
         digitalWrite(phPin, HIGH);
-        int effort = correction;
+        effort = correction;
         if (effort < minEffort) {
           effort = minEffort;
         }
@@ -164,21 +165,24 @@ void loop() {
       }
       else {
         digitalWrite(phPin, LOW);
-        int effort = -correction;
+        effort = -correction;
         if (effort < minEffort) {
           effort = minEffort;
         }
         analogWrite(enPin, effort);
       }
 
-      Serial.print("GyroAngle: ");
+      Serial.print(millis());
+      Serial.print(" ms | GyroAngle: ");
       Serial.print(gyroAngle);
       Serial.print(" | Target: ");
       Serial.print(targetAngle);
       Serial.print(" | Error: ");
       Serial.print(targetAngle - gyroAngle);
       Serial.print(" | Correction: ");
-      Serial.println(correction);
+      Serial.print(correction);
+      Serial.print(" | Effort: ");
+      Serial.println(effort);
 
       delay(20);
     }
